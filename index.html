@@ -1,0 +1,637 @@
+# Let's create an updated, fully self-contained HTML file for a Princess Piggy Farm game
+# featuring a true ISOMETRIC (diamond grid) view for a 7-year-old girl who loves princesses.
+# We will use CSS transform to create an isometric grid with cute pig pens, princess castle,
+# interactive feeding, harvesting, purchasing, and upgrading.
+
+html_content = """<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ฟาร์มหมูเจ้าหญิง Isometric - Princess Piggy Farm</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;700&display=swap');
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Prompt', sans-serif;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(135deg, #ffe6f2 0%, #fff0f5 50%, #e6f2ff 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            color: #4a4a4a;
+            overflow-x: hidden;
+            padding: 10px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        h1 {
+            color: #d1498b;
+            font-size: 24px;
+            text-shadow: 2px 2px 4px rgba(255, 182, 193, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        /* Dashboard UI */
+        .dashboard {
+            display: flex;
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 8px 18px;
+            border-radius: 25px;
+            box-shadow: 0 4px 15px rgba(255, 150, 180, 0.3);
+            margin-bottom: 12px;
+            border: 3px solid #ffb6c1;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .stat-item span {
+            color: #d1498b;
+            font-size: 17px;
+        }
+
+        /* Main Game Container with Isometric Perspective */
+        .game-container {
+            position: relative;
+            width: 100%;
+            max-width: 650px;
+            height: 380px;
+            background: linear-gradient(135deg, #b3e6ff 0%, #d9f2ff 50%, #99ff99 100%);
+            border-radius: 25px;
+            border: 5px solid #ff99bb;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Isometric World Scene */
+        .iso-world {
+            position: relative;
+            width: 450px;
+            height: 280px;
+            transform: rotateX(55deg) rotateZ(-45deg);
+            transform-style: preserve-3d;
+            margin-top: -20px;
+        }
+
+        /* Isometric Castle (Background decoration) */
+        .iso-castle {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 90px;
+            height: 90px;
+            background: linear-gradient(135deg, #ffc0cb 0%, #ff99bb 100%);
+            border: 3px solid #fff;
+            border-radius: 12px;
+            transform: translateZ(25px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: -10px 10px 20px rgba(0,0,0,0.2);
+            text-align: center;
+            font-size: 26px;
+        }
+        .iso-castle-label {
+            font-size: 10px;
+            color: #fff;
+            font-weight: 700;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            margin-top: 2px;
+        }
+
+        /* Isometric Pens Grid Layout */
+        .iso-grid {
+            position: absolute;
+            bottom: 30px;
+            right: 20px;
+            display: grid;
+            grid-template-columns: repeat(2, 90px);
+            grid-template-rows: repeat(2, 90px);
+            gap: 15px;
+            transform-style: preserve-3d;
+        }
+
+        .iso-tile {
+            width: 90px;
+            height: 90px;
+            background: rgba(255, 248, 220, 0.9);
+            border: 3px dashed #deb887;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: -6px 6px 12px rgba(0,0,0,0.15);
+            position: relative;
+            transform: translateZ(5px);
+        }
+
+        .iso-tile:hover {
+            transform: translateZ(12px) scale(1.05);
+            background: rgba(255, 240, 245, 0.95);
+            border-color: #d1498b;
+        }
+
+        .iso-tile.empty {
+            color: #b8860b;
+            font-size: 11px;
+            font-weight: 700;
+            text-align: center;
+            border-style: dotted;
+            background: rgba(255, 255, 255, 0.7);
+        }
+
+        .iso-tile.locked {
+            background: rgba(200, 200, 200, 0.7);
+            border-color: #999;
+            color: #666;
+            cursor: not-allowed;
+            font-size: 10px;
+            text-align: center;
+        }
+
+        /* Counter-rotate content so icons stay upright/readable visually against 3D transform */
+        .upright-content {
+            transform: rotateZ(45deg) rotateX(-55deg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 120px;
+            text-align: center;
+        }
+
+        .pig-avatar {
+            font-size: 38px;
+            animation: bounce 2s infinite ease-in-out;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+        }
+
+        .pig-info {
+            font-size: 10px;
+            background: white;
+            padding: 1px 6px;
+            border-radius: 8px;
+            margin-top: 2px;
+            font-weight: 700;
+            color: #555;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            white-space: nowrap;
+        }
+
+        .hunger-bar-container {
+            width: 55px;
+            height: 6px;
+            background: #eee;
+            border-radius: 3px;
+            margin-top: 3px;
+            overflow: hidden;
+            border: 1px solid #ccc;
+        }
+
+        .hunger-bar {
+            height: 100%;
+            background: #ff6699;
+            width: 100%;
+            transition: width 0.3s;
+        }
+
+        /* Control Panel Buttons */
+        .controls {
+            margin-top: 12px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 650px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #ff80bf 0%, #ff4d94 100%);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(255, 77, 148, 0.3);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            background: linear-gradient(135deg, #ff66b2 0%, #ff3385 100%);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #80bfff 0%, #4da6ff 100%);
+            box-shadow: 0 4px 10px rgba(77, 166, 255, 0.3);
+        }
+        .btn-secondary:hover { background: linear-gradient(135deg, #66b3ff 0%, #3399ff 100%); }
+
+        .btn-gold {
+            background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%);
+            color: #554400;
+            box-shadow: 0 4px 10px rgba(255, 170, 0, 0.3);
+        }
+        .btn-gold:hover { background: linear-gradient(135deg, #ffdf33 0%, #ffbb1a 100%); }
+
+        /* Message Box */
+        .message-box {
+            margin-top: 12px;
+            background: white;
+            padding: 8px 16px;
+            border-radius: 15px;
+            border: 2px solid #ffb6c1;
+            font-size: 13px;
+            font-weight: 600;
+            color: #d1498b;
+            min-height: 40px;
+            max-width: 650px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        /* Modal Popup */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4);
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 25px;
+            border: 4px solid #ff99bb;
+            width: 90%;
+            max-width: 350px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .modal-title {
+            color: #d1498b;
+            font-size: 18px;
+            margin-bottom: 12px;
+            font-weight: 700;
+        }
+
+        .shop-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #fff0f5;
+            padding: 8px 12px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            border: 2px solid #ffc0cb;
+            font-size: 14px;
+        }
+
+        .close-btn {
+            background: #ccc;
+            color: white;
+            margin-top: 12px;
+            border: none;
+            padding: 6px 16px;
+            border-radius: 12px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .close-btn:hover { background: #b3b3b3; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>👑 ฟาร์มหมูเจ้าหญิง Isometric 🐷</h1>
+    </header>
+
+    <div class="dashboard">
+        <div class="stat-item">💰 เงินเจ้าหญิง: <span id="gold">120</span> G</div>
+        <div class="stat-item">🐷 หมูในฟาร์ม: <span id="pigCount">1</span> / 4 ตัว</div>
+        <div class="stat-item">✨ เลเวลฟาร์ม: <span id="farmLevel">1</span></div>
+    </div>
+
+    <div class="game-container">
+        <div class="iso-world">
+            <div class="iso-castle">
+                🏰
+                <div class="iso-castle-label">ปราสาท</div>
+            </div>
+
+            <div class="iso-grid" id="isoGrid">
+                <div class="iso-tile" id="pen-0" onclick="handlePenClick(0)">
+                    <div class="upright-content">
+                        <div class="pig-avatar">👑🐷</div>
+                        <div class="pig-info">พิงค์กี้ (Lv.1)</div>
+                        <div class="hunger-bar-container">
+                            <div class="hunger-bar" id="hunger-0" style="width: 100%;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="iso-tile empty" id="pen-1" onclick="handlePenClick(1)">
+                    <div class="upright-content">
+                        ➕ สร้างคอก<br>(60 G)
+                    </div>
+                </div>
+                <div class="iso-tile locked" id="pen-2" onclick="handlePenClick(2)">
+                    <div class="upright-content">
+                        🔒 ล็อคอยู่<br>(เวล 2)
+                    </div>
+                </div>
+                <div class="iso-tile locked" id="pen-3" onclick="handlePenClick(3)">
+                    <div class="upright-content">
+                        🔒 ล็อคอยู่<br>(เวล 2)
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="btn btn-gold" onclick="openShop()">🛍️ ร้านค้าเจ้าหญิง</button>
+        <button class="btn btn-secondary" onclick="feedAllPigs()">🍎 ให้อาหารหมูทั้งหมด</button>
+        <button class="btn" onclick="collectAllMoney()">💎 เก็บเงินจากฟาร์ม</button>
+    </div>
+
+    <div class="message-box" id="messageBox">
+        ยินดีต้อนรับสู่ฟาร์มเจ้าหญิงมุมมอง Isometric 3 มิติ! คลิกที่ตัวหมูเพื่อเก็บเงิน หรือให้อาหารเพิ่มความสุขกันเถอะ! ✨
+    </div>
+
+    <div class="modal" id="shopModal">
+        <div class="modal-content">
+            <div class="modal-title">🛍️ ร้านค้าเวทมนตร์เจ้าหญิง</div>
+            
+            <div class="shop-item">
+                <span>👑 ซื้อหมูเจ้าหญิงเพิ่ม</span>
+                <button class="btn btn-gold" onclick="buyPig()" style="padding: 5px 10px; font-size: 12px;">70 G</button>
+            </div>
+            <div class="shop-item">
+                <span>🍎 สตรอว์เบอร์รี่วิเศษ (+อาหาร)</span>
+                <button class="btn btn-gold" onclick="buyFood()" style="padding: 5px 10px; font-size: 12px;">20 G</button>
+            </div>
+            <div class="shop-item">
+                <span>🏰 อัพเกรดฟาร์ม (ปลดคอกทั้งหมด)</span>
+                <button class="btn btn-gold" onclick="upgradeFarm()" style="padding: 5px 10px; font-size: 12px;">180 G</button>
+            </div>
+
+            <button class="close-btn" onclick="closeShop()">ปิดร้าน</button>
+        </div>
+    </div>
+
+    <script>
+        // Game State
+        let gold = 150;
+        let foodCount = 5;
+        let farmLevel = 1;
+
+        // Pens: 4 slots in isometric grid
+        let pens = [
+            { name: "พิงค์กี้", level: 1, hunger: 100, readyToHarvest: true },
+            null,
+            null,
+            null
+        ];
+
+        const pigAvatars = ["👑🐷", "🎀🐽", "✨🐖", "🌸🐷"];
+        const pigNames = ["พิงค์กี้", "โรสซี่", "ชูก้า", "มรกต"];
+
+        function updateUI() {
+            document.getElementById('gold').innerText = gold;
+            document.getElementById('farmLevel').innerText = farmLevel;
+            
+            let countPigs = pens.filter(p => p !== null).length;
+            document.getElementById('pigCount').innerText = countPigs;
+
+            for (let i = 0; i < 4; i++) {
+                let tileEl = document.getElementById(`pen-${i}`);
+                let pig = pens[i];
+
+                // Check lock status for slots 2 & 3
+                if ((i === 2 || i === 3) && farmLevel < 2) {
+                    tileEl.className = "iso-tile locked";
+                    tileEl.innerHTML = `<div class="upright-content">🔒 ล็อคอยู่<br>(อัพเกรดเวล 2)</div>`;
+                    continue;
+                }
+
+                if (pig === null) {
+                    tileEl.className = "iso-tile empty";
+                    tileEl.innerHTML = `<div class="upright-content">➕ ซื้อหมูใหม่<br>(70 G)</div>`;
+                } else {
+                    tileEl.className = "iso-tile";
+                    let avatar = pig.readyToHarvest ? "💰🐷✨" : pigAvatars[i % pigAvatars.length];
+                    tileEl.innerHTML = `
+                        <div class="upright-content">
+                            <div class="pig-avatar">${avatar}</div>
+                            <div class="pig-info">${pig.name} (Lv.${pig.level})</div>
+                            <div class="hunger-bar-container">
+                                <div class="hunger-bar" id="hunger-${i}" style="width: ${pig.hunger}%;"></div>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        function setMessage(msg) {
+            document.getElementById('messageBox').innerText = msg;
+        }
+
+        function handlePenClick(index) {
+            if ((index === 2 || index === 3) && farmLevel < 2) {
+                setMessage("🏰 ต้องอัพเกรดฟาร์มเป็นเลเวล 2 ก่อน ถึงจะปลดล็อคคอกโซนนี้ได้จ้า!");
+                return;
+            }
+
+            let pig = pens[index];
+            if (pig === null) {
+                if (gold >= 70) {
+                    gold -= 70;
+                    let randomName = pigNames[Math.floor(Math.random() * pigNames.length)];
+                    pens[index] = {
+                        name: randomName,
+                        level: 1,
+                        hunger: 100,
+                        readyToHarvest: true
+                    };
+                    setMessage(`🎉 ยินดีต้อนรับเจ้าหญิงหมูตัวใหม่ "${randomName}" สู่ฟาร์ม Isometric!`);
+                    updateUI();
+                } else {
+                    setMessage("❌ เงินเจ้าหญิงไม่พอ! (ต้องการ 70 G)");
+                }
+            } else {
+                if (pig.readyToHarvest) {
+                    let earned = pig.level * 25;
+                    gold += earned;
+                    pig.readyToHarvest = false;
+                    pig.hunger = Math.max(0, pig.hunger - 40);
+                    setMessage(`✨ เก็บเงินเวทมนตร์ได้ ${earned} G จากน้องหมู ${pig.name}!`);
+                    updateUI();
+                } else if (pig.hunger < 50) {
+                    pig.hunger = 100;
+                    pig.readyToHarvest = true;
+                    setMessage(`🍎 ให้น้องหมู ${pig.name} กินสตรอว์เบอร์รี่อิ่มแล้ว พร้อมเก็บเงินต่อ!`);
+                    updateUI();
+                } else {
+                    setMessage(`🐷 น้องหมู ${pig.name} กำลังมีความสุขในฟาร์ม 3 มิติ รอรับเงินได้เลยจ้า!`);
+                }
+            }
+        }
+
+        function feedAllPigs() {
+            let fedCount = 0;
+            pens.forEach(pig => {
+                if (pig !== null && pig.hunger < 100) {
+                    pig.hunger = 100;
+                    pig.readyToHarvest = true;
+                    fedCount++;
+                }
+            });
+            if (fedCount > 0) {
+                setMessage(`🍎 ให้อหารน้องหมูทุกตัวอิ่มท้องเรียบร้อย ทุกตัวพร้อมให้ผลผลิตแล้ว!`);
+                updateUI();
+            } else {
+                setMessage(`🐷 น้องหมูทุกตัวอิ่มและมีความสุขดีอยู่แล้วจ้า!`);
+            }
+        }
+
+        function collectAllMoney() {
+            let totalEarned = 0;
+            pens.forEach(pig => {
+                if (pig !== null && pig.readyToHarvest) {
+                    totalEarned += pig.level * 25;
+                    pig.readyToHarvest = false;
+                    pig.hunger = Math.max(10, pig.hunger - 30);
+                }
+            });
+
+            if (totalEarned > 0) {
+                gold += totalEarned;
+                setMessage(`💎 เก็บเงินจากฟาร์มทั้งหมด ${totalEarned} G สำเร็จแล้ว! ✨`);
+                updateUI();
+            } else {
+                setMessage(`💡 ยังไม่มีหมูพร้อมให้เก็บเงิน ลองให้อหารหรือรอสักครู่นะจ๊ะ!`);
+            }
+        }
+
+        function openShop() { document.getElementById('shopModal').style.display = 'flex'; }
+        function closeShop() { document.getElementById('shopModal').style.display = 'none'; }
+
+        function buyPig() {
+            let emptyIdx = -1;
+            for (let i = 0; i < 4; i++) {
+                if ((i === 2 || i === 3) && farmLevel < 2) continue;
+                if (pens[i] === null) { emptyIdx = i; break; }
+            }
+
+            if (emptyIdx === -1) {
+                setMessage("❌ คอกหมูเต็มแล้วจ้า! ต้องอัพเกรดฟาร์มก่อนนะ");
+                return;
+            }
+
+            if (gold >= 70) {
+                gold -= 70;
+                let randomName = pigNames[Math.floor(Math.random() * pigNames.length)];
+                pens[emptyIdx] = { name: randomName, level: 1, hunger: 100, readyToHarvest: true };
+                setMessage(`🎉 ซื้อหมูตัวใหม่สำเร็จ! ยินดีต้อนรับ ${randomName}`);
+                updateUI();
+                closeShop();
+            } else {
+                setMessage("❌ เงินไม่พอซื้อหมู (ราคา 70 G)");
+            }
+        }
+
+        function buyFood() {
+            gold += 0; // Just feedback
+            foodCount += 3;
+            setMessage("🍎 ได้รับสตรอว์เบอร์รี่วิเศษเพิ่มเรียบร้อย!");
+            closeShop();
+        }
+
+        function upgradeFarm() {
+            if (farmLevel >= 2) {
+                setMessage("🏰 ฟาร์มของคุณอัพเกรดสูงสุดแล้วจ้า!");
+                return;
+            }
+
+            if (gold >= 180) {
+                gold -= 180;
+                farmLevel = 2;
+                setMessage("🎉 เย้! อัพเกรดฟาร์ม Isometric เป็นเลเวล 2 ปลดล็อคคอกทั้งหมดสำเร็จ!");
+                updateUI();
+                closeShop();
+            } else {
+                setMessage("❌ เงินไม่พออัพเกรดฟาร์ม (ต้องการ 180 G)");
+            }
+        }
+
+        // Passive timer
+        setInterval(() => {
+            let changed = false;
+            pens.forEach(pig => {
+                if (pig !== null && pig.hunger > 0) {
+                    pig.hunger -= 4;
+                    if (pig.hunger <= 30) pig.readyToHarvest = false;
+                    changed = true;
+                }
+            });
+            if (changed) updateUI();
+        }, 5000);
+
+        updateUI();
+    </script>
+</body>
+</html>
+"""
+
+# Save file
+with open("isometric_princess_farm.html", "w", encoding="utf-8") as f:
+    f.write(html_content)
+
+print("Isometric HTML file successfully generated.")
