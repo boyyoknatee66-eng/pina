@@ -1,0 +1,659 @@
+# Let's write a python script to create a standalone, fully-featured HTML file for a Pig Farm game
+# targeted at a 7-year-old girl who loves princesses, featuring an isometric or cute pixel/cartoon style,
+# simple interactive gameplay (raising pigs, feeding them, earning coins, princess-themed decorations/upgrades),
+# entirely in Thai.
+
+html_content = """<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ฟาร์มหมูเจ้าหญิงแสนสวย - Princess Piggy Farm</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;700&display=swap');
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Prompt', sans-serif;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(135deg, #ffe6f2 0%, #fff0f5 50%, #e6f2ff 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            color: #4a4a4a;
+            overflow-x: hidden;
+            padding: 10px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        h1 {
+            color: #d1498b;
+            font-size: 26px;
+            text-shadow: 2px 2px 4px rgba(255, 182, 193, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        /* Dashboard UI */
+        .dashboard {
+            display: flex;
+            gap: 15px;
+            background: rgba(255, 255, 255, 0.85);
+            padding: 10px 20px;
+            border-radius: 30px;
+            box-shadow: 0 4px 15px rgba(255, 150, 180, 0.3);
+            margin-bottom: 15px;
+            border: 3px solid #ffb6c1;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .stat-item span {
+            color: #d1498b;
+            font-size: 18px;
+        }
+
+        /* Main Game Container */
+        .game-container {
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+            height: 400px;
+            background: linear-gradient(to bottom, #b3e6ff 0%, #b3e6ff 40%, #85e085 40%, #66cc66 100%);
+            border-radius: 25px;
+            border: 5px solid #ff99bb;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Castle background element */
+        .castle-bg {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            font-size: 60px;
+            filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.15));
+            z-index: 1;
+        }
+
+        .farm-title-banner {
+            position: absolute;
+            top: 15px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 5px 15px;
+            border-radius: 15px;
+            font-size: 14px;
+            font-weight: 700;
+            color: #d1498b;
+            border: 2px dashed #ffb6c1;
+            z-index: 2;
+        }
+
+        /* Farm Grid / Pens */
+        .farm-grid {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            height: 220px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            z-index: 2;
+        }
+
+        .pen {
+            background: rgba(255, 248, 220, 0.85);
+            border: 4px dashed #deb887;
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: inset 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        .pen:hover {
+            transform: scale(1.03);
+            border-color: #d1498b;
+            background: rgba(255, 240, 245, 0.95);
+        }
+
+        .pen.empty {
+            border-style: dotted;
+            color: #b8860b;
+            font-size: 14px;
+            font-weight: 600;
+            text-align: center;
+            padding: 10px;
+        }
+
+        .pig-avatar {
+            font-size: 55px;
+            transition: transform 0.2s;
+            animation: bounce 2s infinite ease-in-out;
+            cursor: pointer;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+
+        .pig-info {
+            font-size: 12px;
+            background: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-top: 5px;
+            font-weight: 600;
+            color: #666;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .hunger-bar-container {
+            width: 70px;
+            height: 8px;
+            background: #eee;
+            border-radius: 4px;
+            margin-top: 4px;
+            overflow: hidden;
+            border: 1px solid #ccc;
+        }
+
+        .hunger-bar {
+            height: 100%;
+            background: #ff6699;
+            width: 100%;
+            transition: width 0.3s;
+        }
+
+        /* Control Panel / Shop */
+        .controls {
+            margin-top: 15px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 700px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #ff80bf 0%, #ff4d94 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(255, 77, 148, 0.3);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(255, 77, 148, 0.4);
+            background: linear-gradient(135deg, #ff66b2 0%, #ff3385 100%);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #80bfff 0%, #4da6ff 100%);
+            box-shadow: 0 4px 10px rgba(77, 166, 255, 0.3);
+        }
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #66b3ff 0%, #3399ff 100%);
+        }
+
+        .btn-gold {
+            background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%);
+            color: #554400;
+            box-shadow: 0 4px 10px rgba(255, 170, 0, 0.3);
+        }
+        .btn-gold:hover {
+            background: linear-gradient(135deg, #ffdf33 0%, #ffbb1a 100%);
+        }
+
+        /* Message Log / Quest box */
+        .message-box {
+            margin-top: 15px;
+            background: white;
+            padding: 10px 20px;
+            border-radius: 15px;
+            border: 2px solid #ffb6c1;
+            font-size: 14px;
+            font-weight: 600;
+            color: #d1498b;
+            min-height: 45px;
+            max-width: 700px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        /* Modal Popup for Shop */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4);
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 25px;
+            border: 4px solid #ff99bb;
+            width: 90%;
+            max-width: 380px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            animation: popUp 0.3s ease;
+        }
+
+        @keyframes popUp {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .modal-title {
+            color: #d1498b;
+            font-size: 20px;
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+
+        .shop-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #fff0f5;
+            padding: 10px 15px;
+            border-radius: 15px;
+            margin-bottom: 10px;
+            border: 2px solid #ffc0cb;
+        }
+
+        .shop-item span {
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .close-btn {
+            background: #ccc;
+            color: white;
+            margin-top: 15px;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 15px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .close-btn:hover { background: #b3b3b3; }
+
+        /* Floating coins animation */
+        @keyframes floatUp {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-40px); opacity: 0; }
+        }
+        .floating-coin {
+            position: absolute;
+            color: #ffaa00;
+            font-weight: bold;
+            font-size: 18px;
+            pointer-events: none;
+            animation: floatUp 0.8s ease-out forwards;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>👑 ฟาร์มหมูเจ้าหญิงแสนสวย 🐷</h1>
+    </header>
+
+    <div class="dashboard">
+        <div class="stat-item">💰 เงินเจ้าหญิง: <span id="gold">100</span> G</div>
+        <div class="stat-item">🐷 หมูในฟาร์ม: <span id="pigCount">1</span> / 3 ตัว</div>
+        <div class="stat-item">✨ เลเวลฟาร์ม: <span id="farmLevel">1</span></div>
+    </div>
+
+    <div class="game-container" id="gameArea">
+        <div class="castle-bg">🏰</div>
+        <div class="farm-title-banner">🌸 ฟาร์มหมูเจ้าหญิงเกรโตซา 🌸</div>
+        
+        <div class="farm-grid" id="farmGrid">
+            <div class="pen" id="pen-0" onclick="handlePenClick(0)">
+                <div class="pig-avatar">👑🐷</div>
+                <div class="pig-info">เจ้าหญิงพิงค์กี้ (เลเวล 1)</div>
+                <div class="hunger-bar-container">
+                    <div class="hunger-bar" id="hunger-0" style="width: 100%;"></div>
+                </div>
+            </div>
+            <div class="pen empty" id="pen-1" onclick="handlePenClick(1)">
+                ➕ สร้างคอกหมูใหม่<br>(ราคา 50 G)
+            </div>
+            <div class="pen empty" id="pen-2" onclick="handlePenClick(2)">
+                🔒 ล็อคอยู่<br>(ปลดล็อคเลเวล 2)
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="btn btn-gold" onclick="openShop()">🛍️ ร้านค้าเจ้าหญิง</button>
+        <button class="btn btn-secondary" onclick="feedAllPigs()">🍎 ให้อาหารหมูทั้งหมด</button>
+        <button class="btn" onclick="collectAllMoney()">💎 เก็บเงินจากหมู</button>
+    </div>
+
+    <div class="message-box" id="messageBox">
+        ยินดีต้อนรับสู่ฟาร์มเจ้าหญิง! คลิกที่ตัวหมูเพื่อเก็บเพชร/เงิน หรือกดให้อาหารหมูเพื่อความสุขกันเถอะ! ✨
+    </div>
+
+    <div class="modal" id="shopModal">
+        <div class="modal-content">
+            <div class="modal-title">🛍️ ร้านค้าเวทมนตร์เจ้าหญิง</div>
+            
+            <div class="shop-item">
+                <span>👑 ซื้อหมูเจ้าหญิงเพิ่ม</span>
+                <button class="btn btn-gold" onclick="buyPig()" style="padding: 6px 12px; font-size: 13px;">80 G</button>
+            </div>
+            <div class="shop-item">
+                <span>🍎 สตรอว์เบอร์รี่วิเศษ (อาหาร)</span>
+                <button class="btn btn-gold" onclick="buyFood()" style="padding: 6px 12px; font-size: 13px;">20 G</button>
+            </div>
+            <div class="shop-item">
+                <span>🏰 อัพเกรดปราสาท (เวลฟาร์ม)</span>
+                <button class="btn btn-gold" onclick="upgradeFarm()" style="padding: 6px 12px; font-size: 13px;">200 G</button>
+            </div>
+
+            <button class="close-btn" onclick="closeShop()">ปิดร้าน</button>
+        </div>
+    </div>
+
+    <script>
+        // Game State
+        let gold = 150;
+        let foodCount = 5;
+        let farmLevel = 1;
+
+        // Pigs data: null means empty pen, object means a pig exists
+        let pens = [
+            { name: "เจ้าหญิงพิงค์กี้", level: 1, hunger: 100, maxHunger: 100, readyToHarvest: false },
+            null,
+            null
+        ];
+
+        const pigAvatars = ["👑🐷", "🎀🐽", "✨🐖", "🌸🐷", "💎🐽"];
+        const pigNames = ["พิงค์กี้", "โรสซี่", "บลูมมิ่ง", "ชูก้า", "มรกต"];
+
+        function updateUI() {
+            document.getElementById('gold').innerText = gold;
+            document.getElementById('farmLevel').innerText = farmLevel;
+            
+            let countPigs = pens.filter(p => p !== null).length;
+            document.getElementById('pigCount').innerText = countPigs;
+
+            // Render pens
+            for (let i = 0; i < 3; i++) {
+                let penEl = document.getElementById(`pen-${i}`);
+                let pig = pens[i];
+
+                if (i === 2 && farmLevel < 2) {
+                    penEl.className = "pen empty";
+                    penEl.innerHTML = "🔒 ล็อคอยู่<br>(อัพเกรดฟาร์ม เวล 2)";
+                    continue;
+                }
+
+                if (pig === null) {
+                    penEl.className = "pen empty";
+                    penEl.innerHTML = `➕ ซื้อคอก/สร้าง<br>(ว่าง)`;
+                } else {
+                    penEl.className = "pen";
+                    let avatar = pig.readyToHarvest ? "💰🐷✨" : pigAvatars[i % pigAvatars.length];
+                    penEl.innerHTML = `
+                        <div class="pig-avatar">${avatar}</div>
+                        <div class="pig-info">${pig.name} (Lv.${pig.level})</div>
+                        <div class="hunger-bar-container">
+                            <div class="hunger-bar" id="hunger-${i}" style="width: ${pig.hunger}%;"></div>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        function setMessage(msg) {
+            document.getElementById('messageBox').innerText = msg;
+        }
+
+        // Handle clicking on a pen
+        function handlePenClick(index) {
+            if (index === 2 && farmLevel < 2) {
+                setMessage("🏰 ต้องอัพเกรดฟาร์มเป็นเลเวล 2 ก่อน ถึงจะปลดล็อคคอกนี้ได้จ้า!");
+                return;
+            }
+
+            let pig = pens[index];
+            if (pig === null) {
+                // Try to buy / place a pig if gold >= 80
+                if (gold >= 80) {
+                    gold -= 80;
+                    let randomName = pigNames[Math.floor(Math.random() * pigNames.length)];
+                    pens[index] = {
+                        name: randomName,
+                        level: 1,
+                        hunger: 100,
+                        maxHunger: 100,
+                        readyToHarvest: true
+                    };
+                    setMessage(`🎉 เย้! ได้หมูเจ้าหญิงตัวใหม่ชื่อ "${randomName}" มาเข้าคอกแล้ว!`);
+                    updateUI();
+                } else {
+                    setMessage("❌ เงินเจ้าหญิงไม่พอ! (ต้องการ 80 G เพื่อซื้อหมูใหม่)");
+                }
+            } else {
+                // If pig is ready, harvest gold!
+                if (pig.readyToHarvest) {
+                    let earned = pig.level * 30;
+                    gold += earned;
+                    pig.readyToHarvest = false;
+                    pig.hunger = Math.max(0, pig.hunger - 40);
+                    setMessage(`✨ เก็บเงินเวทมนตร์ได้ ${earned} G จากน้องหมู ${pig.name}!`);
+                    showFloatingText(`+${earned} G`, event);
+                    updateUI();
+                } else if (pig.hunger < 50) {
+                    // Feed single pig
+                    if (foodCount > 0) {
+                        foodCount--;
+                        pig.hunger = 100;
+                        pig.readyToHarvest = true;
+                        setMessage(`🍎 ให้น้องหมู ${pig.name} กินอิ่มแล้ว พร้อมให้เก็บเพชรแล้วจ้า!`);
+                        updateUI();
+                    } else {
+                        setMessage("❌ อาหารหมดแล้ว! ไปซื้อสตรอว์เบอร์รี่วิเศษในร้านค้าด่วนเลย!");
+                    }
+                } else {
+                    setMessage(`🐷 น้องหมู ${pig.name} กำลังมีความสุขอยู่จ้า รอเก็บเงินได้เลย!`);
+                }
+            }
+        }
+
+        function feedAllPigs() {
+            let fedCount = 0;
+            pens.forEach(pig => {
+                if (pig !== null && pig.hunger < 100) {
+                    pig.hunger = 100;
+                    pig.readyToHarvest = true;
+                    fedCount++;
+                }
+            });
+            if (fedCount > 0) {
+                setMessage(`🍎 ให้อหารน้องหมูทุกตัวอิ่มแปล้แล้ว ทุกตัวพร้อมให้ผลผลิตแล้วจ้า!`);
+                updateUI();
+            } else {
+                setMessage(`🐷 น้องหมูทุกตัวอิ่มท้องและมีความสุขดีอยู่แล้วจ้า!`);
+            }
+        }
+
+        function collectAllMoney() {
+            let totalEarned = 0;
+            pens.forEach(pig => {
+                if (pig !== null && pig.readyToHarvest) {
+                    totalEarned += pig.level * 30;
+                    pig.readyToHarvest = false;
+                    pig.hunger = Math.max(10, pig.hunger - 30);
+                }
+            });
+
+            if (totalEarned > 0) {
+                gold += totalEarned;
+                setMessage(`💎 เก็บเงินสะสมจากฟาร์มเจ้าหญิงทั้งหมด ${totalEarned} G สำเร็จแล้ว! ✨`);
+                updateUI();
+            } else {
+                setMessage(`💡 ยังไม่มีหมูตัวไหนพร้อมให้เก็บเงินเลย ลองให้อหารหรือรอสักครู่นะจ๊ะ!`);
+            }
+        }
+
+        // Shop functions
+        function openShop() {
+            document.getElementById('shopModal').style.display = 'flex';
+        }
+        function closeShop() {
+            document.getElementById('shopModal').style.display = 'none';
+        }
+
+        function buyPig() {
+            // Find first empty pen
+            let emptyIdx = -1;
+            for (let i = 0; i < 3; i++) {
+                if (i === 2 && farmLevel < 2) continue;
+                if (pens[i] === null) {
+                    emptyIdx = i;
+                    break;
+                }
+            }
+
+            if (emptyIdx === -1) {
+                setMessage("❌ คอกหมูเต็มแล้วจ้า! ต้องอัพเกรดฟาร์มก่อนนะ");
+                return;
+            }
+
+            if (gold >= 80) {
+                gold -= 80;
+                let randomName = pigNames[Math.floor(Math.random() * pigNames.length)];
+                pens[emptyIdx] = {
+                    name: randomName,
+                    level: 1,
+                    hunger: 100,
+                    maxHunger: 100,
+                    readyToHarvest: true
+                };
+                setMessage(`🎉 ซื้อหมูตัวใหม่สำเร็จ! ยินดีต้อนรับเจ้าหญิง ${randomName}`);
+                updateUI();
+                closeShop();
+            } else {
+                setMessage("❌ เงินไม่พอซื้อหมู (ราคา 80 G)");
+            }
+        }
+
+        function buyFood() {
+            if (gold >= 20) {
+                gold -= 20;
+                foodCount += 3;
+                setMessage("🍎 ซื้อสตรอว์เบอร์รี่วิเศษ (+3 ชิ้น) สำเร็จแล้ว!");
+                updateUI();
+                closeShop();
+            } else {
+                setMessage("❌ เงินไม่พอซื้ออาหาร (ราคา 20 G)");
+            }
+        }
+
+        function upgradeFarm() {
+            if (farmLevel >= 2) {
+                setMessage("🏰 ฟาร์มของคุณอัพเกรดสูงสุดแล้วจ้า!");
+                return;
+            }
+
+            if (gold >= 200) {
+                gold -= 200;
+                farmLevel = 2;
+                setMessage("🎉 เย้! อัพเกรดปราสาทและฟาร์มเป็นเลเวล 2 สำเร็จ! ปลดล็อคคอกที่ 3 แล้ว!");
+                updateUI();
+                closeShop();
+            } else {
+                setMessage("❌ เงินไม่พออัพเกรดฟาร์ม (ต้องการ 200 G)");
+            }
+        }
+
+        // Automatic passive check (pigs slowly get hungry, can become ready)
+        setInterval(() => {
+            let changed = false;
+            pens.forEach(pig => {
+                if (pig !== null) {
+                    if (pig.hunger > 0) {
+                        pig.hunger -= 5;
+                        if (pig.hunger <= 30) {
+                            pig.readyToHarvest = false;
+                        }
+                        changed = true;
+                    }
+                }
+            });
+            if (changed) updateUI();
+        }, 5000);
+
+        function showFloatingText(text, e) {
+            // Optional mini effect
+        }
+
+        // Initial render
+        updateUI();
+    </script>
+</body>
+</html>
+"""
+
+# Save to file
+file_path = "princess_piggy_farm.html"
+with open(file_path, "w", encoding="utf-8") as f:
+    f.write(html_content)
+
+print(f"File successfully created: {file_path}")
