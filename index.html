@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>โกเลมผจญภัย</title>
+<style>
+  html, body {
+    margin: 0; padding: 0; overflow: hidden; width: 100%; height: 100%;
+    background: #87CEEB; touch-action: none; -webkit-user-select: none; user-select: none;
+    font-family: "TH Sarabun New", "Sarabun", sans-serif;
+  }
+  #gameCanvas { display: block; background: #87CEEB; touch-action: none; }
+
+  #hud { position: fixed; top: 8px; left: 8px; right: 8px; pointer-events: none; z-index: 10; }
+  .bar-row { display: flex; align-items: center; margin-bottom: 4px; }
+  .bar-bg { width: 180px; height: 18px; background: #333; border: 2px solid white; border-radius: 4px; overflow: hidden; }
+  .bar-fill { height: 100%; transition: width 0.15s linear; }
+  .hp-fill { background: #e53935; }
+  .laser-fill { background: #ff2fd6; }
+  .bar-label { color: white; font-size: 12px; margin-left: 8px; text-shadow: 1px 1px 2px black; white-space: nowrap; }
+  #scoreLine, #buffLine, #swordLine, #oreLine { color: black; font-size: 13px; font-weight: bold;
+    text-shadow: 0 0 3px white, 0 0 3px white; margin-top: 2px; }
+  #buffLine { color: #1565c0; }
+  #swordLine { color: #6a1b9a; }
+  #oreLine { color: #37474f; }
+
+  #topRight { position: fixed; top: 8px; right: 8px; text-align: right; pointer-events: none; z-index: 10; }
+  #blockSel { color: black; font-size: 13px; font-weight: bold; text-shadow: 0 0 3px white, 0 0 3px white; }
+
+  #gameOverScreen {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7); color: white;
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    font-size: 28px; z-index: 50; text-align: center;
+  }
+  #gameOverScreen button { margin-top: 20px; font-size: 20px; padding: 12px 28px; border-radius: 10px;
+    border: none; background: #ff2fd6; color: white; }
+
+  /* touch controls */
+  .ctrlBtn {
+    position: fixed; width: 64px; height: 64px; border-radius: 50%;
+    background: rgba(255,255,255,0.25); border: 2px solid rgba(255,255,255,0.6);
+    color: white; font-size: 22px; display: flex; align-items: center; justify-content: center;
+    z-index: 20; -webkit-user-select: none; user-select: none; touch-action: none;
+  }
+  .ctrlBtn:active { background: rgba(255,255,255,0.5); }
+  #btnLeft   { left: 16px; bottom: 32px; }
+  #btnRight  { left: 92px; bottom: 32px; }
+  #btnJump   { right: 200px; bottom: 32px; }
+  #btnLaser  { right: 108px; bottom: 100px; background: rgba(255,47,214,0.35); }
+  #btnFire   { right: 108px; bottom: 172px; background: rgba(255,112,67,0.4); }
+  #btnDig    { right: 16px; bottom: 32px; }
+  #btnMode   { right: 16px; bottom: 108px; width: 54px; height: 54px; font-size: 13px; }
+
+  #errorBanner {
+    position: fixed; inset: 0; background: rgba(20,20,20,0.95); color: #ff8a80;
+    display: none; z-index: 100; padding: 20px; font-size: 14px; white-space: pre-wrap;
+    overflow-y: auto; font-family: monospace;
+  }
+</style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+<div id="errorBanner"></div>
+
+<div id="hud">
+  <div class="bar-row">
+    <div class="bar-bg"><div id="hpFill" class="bar-fill hp-fill" style="width:100%"></div></div>
+    <div id="hpLabel" class="bar-label">HP 100/100</div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-bg"><div id="laserFill" class="bar-fill laser-fill" style="width:0%"></div></div>
+    <div id="laserLabel" class="bar-label">เก็บลูกบอลเพื่อปลดล็อกเลเซอร์</div>
+  </div>
+  <div id="scoreLine">ไอเทมที่เก็บได้: 0</div>
+  <div id="buffLine"></div>
+  <div id="swordLine"></div>
+  <div id="oreLine">ถ่านหิน 0  เหล็ก 0  ทอง 0  เพชร 0</div>
+</div>
+
+<div id="topRight">
+  <div id="blockSel">บล็อกที่เลือก: หญ้า</div>
+</div>
+
+<div id="gameOverScreen">
+  <div>คุณตายแล้ว</div>
+  <button id="restartBtn">เริ่มใหม่</button>
+</div>
+
+<div id="btnLeft" class="ctrlBtn">◀</div>
+<div id="btnRight" class="ctrlBtn">▶</div>
+<div id="btnJump" class="ctrlBtn">⤴</div>
+<div id="btnLaser" class="ctrlBtn">⚡F</div>
+<div id="btnFire" class="ctrlBtn">🔥G</div>
+<div id="btnDig" class="ctrlBtn">⛏</div>
+<div id="btnMode" class="ctrlBtn">1 หญ้า</div>
+
+<script>
+"use strict";
+
+window.addEventListener("error", (e) => {
+  const el = document.getElementById("errorBanner");
+  if (el) {
+    el.style.display = "block";
+    el.textContent = "เกิดข้อผิดพลาด (กรุณาแคปหน้าจอนี้ส่งกลับ):\n\n" +
+      (e.message || "unknown error") + "\nfile: " + (e.filename || "-") + " line: " + (e.lineno || "-");
+  }
+});
+
+/* ===================== โกเลมผจญภัย - เวอร์ชันเว็บ (HTML5 Canvas) ===================== */
+
+const TILE = 32;
+const WORLD_W = 200;
+const WORLD_H = 40;
+const GRAVITY = 0.55;
+const MAX_FALL = 14;
+const MOVE_SPEED = 4.2;
+const JUMP_SPEED = -11.5;
+const FLY_SPEED = 3.6;
+const REACH = TILE * 4.5;
+
+const LASER_SPEED = 16;
+const LASER_LIFETIME = 35;
+const PLAYER_LASER_DAMAGE = 45;
+const PATMAN_HP = 120;
+const PATMAN_LASER_DAMAGE = 12;
+const PATMAN_LASER_COOLDOWN = 100;
+const PATMAN_DETECT_RADIUS = TILE * 9;
+
+const FIREBALL_SPEED = 6;
+const FIREBALL_LIFETIME = 90;
+const FIREBALL_DAMAGE = 15;
+const FIREBOX_COOLDOWN = 130;
+const FIREBOX_DETECT_RADIUS = TILE * 8;
+const LAVA_DAMAGE_PER_TICK = 1.2;
+
+const FLAME_SPEED = 10;
+const FLAME_LIFETIME = 25;
+const FLAME_DAMAGE = 20;
+const FLAME_COOLDOWN = 25;
+
+const MUSHROOM_BOUNCE_SPEED = -18.0;
+const MUSHROOM_COOLDOWN = 18;
+const IRON_GOLEM_PUNCH_RADIUS = TILE * 3;
+const IRON_GOLEM_PUNCH_COOLDOWN = 40;
+const SEA_WIDTH = 14;
+const SEA_LEVEL_TILE = Math.floor(WORLD_H / 2);
+const SEA_FLOOR_TILE = WORLD_H - 3;
+
+const AIR = 0, GRASS = 1, DIRT = 2, STONE = 3, COAL = 4, IRON = 5, GOLD = 6, DIAMOND = 7, WOOD = 8, WATER = 9, SAND = 10, BLUE_DIRT = 11, LAVA = 12;
+const TILE_COLORS = {
+  [GRASS]: "#4caf50", [DIRT]: "#8b5a2b", [STONE]: "#8a8a8a",
+  [COAL]: "#3b3b3b", [IRON]: "#c9a27a", [GOLD]: "#ffd54f", [DIAMOND]: "#4dd0e1",
+  [WOOD]: "#a1662f", [WATER]: "#2196f3", [SAND]: "#e5c072", [BLUE_DIRT]: "#4f7fd6", [LAVA]: "#ff5722",
+};
+const TILE_NAMES = {
+  [GRASS]: "หญ้า", [DIRT]: "ดิน", [STONE]: "หิน",
+  [COAL]: "ถ่านหิน", [IRON]: "เหล็ก", [GOLD]: "ทอง", [DIAMOND]: "เพชร",
+  [WOOD]: "ไม้", [WATER]: "น้ำ", [SAND]: "ทราย", [BLUE_DIRT]: "ดินสีฟ้า", [LAVA]: "ลาวา",
+};
+const ORE_TILES = new Set([COAL, IRON, GOLD, DIAMOND]);
+const SOLID_TILES = new Set([GRASS, DIRT, STONE, COAL, IRON, GOLD, DIAMOND, WOOD, SAND, BLUE_DIRT]);
+
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+function rand(a, b) { return a + Math.random() * (b - a); }
+function randInt(a, b) { return Math.floor(rand(a, b + 1)); }
+function choice(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function dist(x0, y0, x1, y1) { return Math.hypot(x1 - x0, y1 - y0); }
+
+function tileAt(world, tx, ty) {
+  if (tx < 0 || tx >= WORLD_W) return STONE;
+  if (ty < 0) return AIR;
+  if (ty >= WORLD_H) return STONE;
+  return world[ty][tx];
+}
+
+function boxCollides(world, x, y, w, h) {
+  if (x < 0 || x + w > WORLD_W * TILE || y + h > WORLD_H * TILE) return true;
+  const left = Math.floor(x / TILE);
+  const right = Math.floor((x + w - 1) / TILE);
+  const top = Math.floor(y / TILE);
+  const bottom = Math.floor((y + h - 1) / TILE);
+  for (let ty = top; ty <= bottom; ty++) {
+    for (let tx = left; tx <= right; tx++) {
+      if (SOLID_TILES.has(tileAt(world, tx, ty))) return true;
+    }
+  }
+  return false;
+}
+
+function buildVillage(world, heights, centerTx) {
+  const half = 3;
+  const baseH = heights[centerTx];
+  for (let x = centerTx - half; x <= centerTx + half; x++) {
+    if (x >= 0 && x < WORLD_W) {
+      heights[x] = baseH;
+      for (let y = 0; y < baseH; y++) world[y][x] = AIR;
+      world[baseH][x] = GRASS;
+      for (let y = baseH + 1; y < Math.min(baseH + 4, WORLD_H); y++) world[y][x] = DIRT;
+      for (let y = baseH + 4; y < WORLD_H; y++) world[y][x] = STONE;
+    }
+  }
+  const houseW = 5, houseH = 4;
+  const hx0 = centerTx - Math.floor(houseW / 2);
+  for (let yy = baseH - houseH; yy < baseH; yy++) {
+    for (let xx = hx0; xx < hx0 + houseW; xx++) {
+      if (yy === baseH - houseH || yy === baseH - 1 || xx === hx0 || xx === hx0 + houseW - 1) {
+        world[yy][xx] = WOOD;
+      } else {
+        world[yy][xx] = AIR;
+      }
+    }
+  }
+  world[baseH - 1][centerTx] = AIR;
+  return baseH;
+}
+
+function generateWorld() {
+  const world = [];
+  for (let y = 0; y < WORLD_H; y++) world.push(new Array(WORLD_W).fill(AIR));
+  const landW = WORLD_W - SEA_WIDTH;
+
+  let height = Math.floor(WORLD_H / 2);
+  const heights = [];
+  for (let x = 0; x < WORLD_W; x++) {
+    height += choice([-1, 0, 0, 0, 1]);
+    height = clamp(height, 8, WORLD_H - 6);
+    heights.push(height);
+  }
+
+  for (let x = 0; x < WORLD_W; x++) {
+    const h = heights[x];
+    world[h][x] = GRASS;
+    for (let y = h + 1; y < Math.min(h + 4, WORLD_H); y++) world[y][x] = DIRT;
+    for (let y = h + 4; y < WORLD_H; y++) world[y][x] = STONE;
+  }
+
+  for (let x = 0; x < WORLD_W; x++) {
+    const h = heights[x];
+    for (let y = h + 4; y < WORLD_H; y++) {
+      const depth = y - (h + 4);
+      const r = Math.random();
+      if (depth >= 16 && r < 0.02) world[y][x] = DIAMOND;
+      else if (depth >= 10 && r < 0.035) world[y][x] = GOLD;
+      else if (depth >= 4 && r < 0.06) world[y][x] = IRON;
+      else if (depth >= 0 && r < 0.09) world[y][x] = COAL;
+    }
+  }
+
+  for (let x = landW; x < WORLD_W; x++) {
+    heights[x] = SEA_LEVEL_TILE;
+    for (let y = 0; y < SEA_LEVEL_TILE; y++) world[y][x] = AIR;
+    for (let y = SEA_LEVEL_TILE; y < SEA_FLOOR_TILE; y++) world[y][x] = WATER;
+    for (let y = SEA_FLOOR_TILE; y < WORLD_H; y++) world[y][x] = STONE;
+  }
+
+  const desertX0 = Math.floor(landW * 0.42);
+  const desertX1 = Math.floor(landW * 0.58);
+  for (let x = desertX0; x < desertX1 && x < landW; x++) {
+    const h = heights[x];
+    world[h][x] = SAND;
+    for (let y = h + 1; y < Math.min(h + 4, WORLD_H); y++) world[y][x] = SAND;
+  }
+
+  const caveX0 = Math.floor(landW * 0.08);
+  const caveX1 = Math.floor(landW * 0.18);
+  const caveRefH = heights[caveX0];
+  const caveY0 = caveRefH + 7;
+  const caveY1 = Math.min(caveRefH + 15, WORLD_H - 2);
+  for (let x = caveX0; x < caveX1; x++) {
+    for (let y = caveY0; y < caveY1; y++) world[y][x] = AIR;
+  }
+
+  const blueX0 = Math.floor(landW * 0.85);
+  const blueX1 = Math.floor(landW * 0.95);
+  for (let x = blueX0; x < blueX1 && x < landW; x++) {
+    const h = heights[x];
+    world[h][x] = BLUE_DIRT;
+    for (let y = h + 1; y < Math.min(h + 4, WORLD_H); y++) world[y][x] = BLUE_DIRT;
+  }
+
+  const lavaX0 = Math.floor(landW * 0.28);
+  const lavaX1 = Math.floor(landW * 0.34);
+  const lavaY0 = WORLD_H - 6;
+  const lavaY1 = WORLD_H - 1;
+  for (let x = lavaX0; x < lavaX1 && x < landW; x++) {
+    for (let y = lavaY0 - 3; y < lavaY0; y++) world[y][x] = AIR;
+    for (let y = lavaY0; y < lavaY1; y++) world[y][x] = LAVA;
+  }
+
+  const cityX0 = Math.floor(landW * 0.64);
+  const cityX1 = Math.floor(landW * 0.72);
+  const cityY = 6;
+  for (let x = cityX0; x < cityX1 && x < landW; x++) {
+    world[cityY][x] = WOOD;
+    world[cityY + 1][x] = WOOD;
+  }
+
+  const villages = [];
+  for (const centerTx of [Math.floor(landW / 4), Math.floor(landW * 3 / 4)]) {
+    const baseH = buildVillage(world, heights, centerTx);
+    villages.push([centerTx, baseH]);
+  }
+
+  return {
+    world, heights, villages, landW, desertX0, desertX1, blueX0, blueX1,
+    caveBounds: { x0: caveX0 * TILE, y0: caveY0 * TILE, x1: caveX1 * TILE, y1: caveY1 * TILE },
+    cityBounds: { x0: cityX0, x1: cityX1, y: cityY },
+    lavaBounds: { x0: lavaX0, x1: lavaX1, y0: lavaY0, y1: lavaY1 },
+  };
+}
+
+function makeEntity(x, y, w, h) {
+  return { x, y, w, h, vx: 0, vy: 0, onGround: false, alive: true };
+}
+
+function moveEntity(world, e, dx, dy) {
+  const newX = e.x + dx;
+  if (!boxCollides(world, newX, e.y, e.w, e.h)) e.x = newX;
+  else e.vx = 0;
+
+  const newY = e.y + dy;
+  if (!boxCollides(world, e.x, newY, e.w, e.h)) {
+    e.y = newY;
+    e.onGround = false;
+  } else {
+    if (dy > 0) e.onGround = true;
+    e.vy = 0;
+  }
+}
+
+function centerOf(e) { return [e.x + e.w / 2, e.y + e.h / 2]; }
+
+function makeGolem(x, y) {
+  const e = makeEntity(x, y, TILE - 6, Math.floor(TILE * 1.6));
+  e.hp = 100; e.maxHp = 100;
+  e.speedTimer = 0; e.jumpTimer = 0; e.flyTimer = 0; e.fireCd = 0;
+  e.transformTimer = 0; e.transformKind = null;
+  e.facing = 1; e.score = 0; e.invuln = 0;
+  e.laserUnlocked = false; e.laserCd = 0;
+  e.hasSword = false;
+  e.ores = { [COAL]: 0, [IRON]: 0, [GOLD]: 0, [DIAMOND]: 0 };
+  return e;
+}
+
+// โครงสร้างเกมหลักเริ่มต้นทำงานเมื่อโหลดหน้าเว็บ
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+let VIEW_W = window.innerWidth, VIEW_H = window.innerHeight;
+
+function resizeCanvas() {
+  VIEW_W = window.innerWidth;
+  VIEW_H = window.innerHeight;
+  canvas.width = VIEW_W;
+  canvas.height = VIEW_H;
+}
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
+
+const keys = new Set();
+window.addEventListener("keydown", (e) => keys.add(e.key.toLowerCase()));
+window.addEventListener("keyup", (e) => keys.delete(e.key.toLowerCase()));
+
+// ระบบควบคุมสัมผัสหน้าจอ (Touch Controls)
+function bindTouch(id, keyName) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener("touchstart", (e) => { e.preventDefault(); keys.add(keyName); });
+  el.addEventListener("touchend", (e) => { e.preventDefault(); keys.delete(keyName); });
+  el.addEventListener("mousedown", (e) => { e.preventDefault(); keys.add(keyName); });
+  el.addEventListener("mouseup", (e) => { e.preventDefault(); keys.delete(keyName); });
+}
+bindTouch("btnLeft", "arrowleft");
+bindTouch("btnRight", "arrowright");
+bindTouch("btnJump", " ");
+bindTouch("btnLaser", "f");
+bindTouch("btnFire", "g");
+
+const G = {};
+function initGame() {
+  const gen = generateWorld();
+  Object.assign(G, gen);
+  G.gameOver = false;
+  G.animTimer = 0;
+  G.selectedBlock = GRASS;
+  G.digMode = true;
+
+  const spawnTx = Math.floor(WORLD_W / 2);
+  const spawnY = (G.heights[spawnTx] - 3) * TILE;
+  G.player = makeGolem(spawnTx * TILE, spawnY);
+  G.cameraX = 0;
+  G.cameraY = 0;
+}
+
+initGame();
+
+function update() {
+  G.animTimer++;
+  const p = G.player;
+  if (!p.alive) return;
+
+  // ควบคุมการเคลื่อนไหว
+  let moveDir = 0;
+  if (keys.has("arrowleft") || keys.has("a")) moveDir = -1;
+  if (keys.has("arrowright") || keys.has("d")) moveDir = 1;
+
+  p.vx = moveDir * MOVE_SPEED;
+  p.vy = Math.min(p.vy + GRAVITY, MAX_FALL);
+  if (moveDir !== 0) p.facing = moveDir;
+
+  if ((keys.has(" ") || keys.has("arrowup") || keys.has("w")) && p.onGround) {
+    p.vy = JUMP_SPEED;
+    p.onGround = false;
+  }
+
+  moveEntity(G.world, p, p.vx, p.vy);
+
+  // อัปเดตกล้องตามตัวละคร
+  G.cameraX = clamp(p.x - VIEW_W / 2, 0, WORLD_W * TILE - VIEW_W);
+  G.cameraY = clamp(p.y - VIEW_H / 2, 0, WORLD_H * TILE - VIEW_H);
+}
+
+function render() {
+  ctx.fillStyle = "#87CEEB";
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+  // วาดบล็อกแผนที่
+  const left = Math.max(0, Math.floor(G.cameraX / TILE));
+  const right = Math.min(WORLD_W - 1, Math.floor((G.cameraX + VIEW_W) / TILE) + 1);
+  const top = Math.max(0, Math.floor(G.cameraY / TILE));
+  const bottom = Math.min(WORLD_H - 1, Math.floor((G.cameraY + VIEW_H) / TILE) + 1);
+
+  for (let ty = top; ty <= bottom; ty++) {
+    for (let tx = left; tx <= right; tx++) {
+      const t = G.world[ty][tx];
+      if (t === AIR) continue;
+      const sx = tx * TILE - G.cameraX;
+      const sy = ty * TILE - G.cameraY;
+      ctx.fillStyle = TILE_COLORS[t] || "#fff";
+      ctx.fillRect(sx, sy, TILE, TILE);
+      ctx.strokeStyle = "rgba(0,0,0,0.15)";
+      ctx.strokeRect(sx, sy, TILE, TILE);
+    }
+  }
+
+  // วาดตัวละครโกเลม
+  const p = G.player;
+  const px = p.x - G.cameraX;
+  const py = p.y - G.cameraY;
+  ctx.fillStyle = "#e91e63";
+  ctx.fillRect(px, py, p.w, p.h);
+  ctx.fillStyle = "black";
+  ctx.fillRect(px + p.w * 0.25, py + 10, 6, 6);
+  ctx.fillRect(px + p.w * 0.6, py + 10, 6, 6);
+}
+
+function syncHud() {
+  const p = G.player;
+  document.getElementById("hpFill").style.width = Math.max(0, (p.hp / p.maxHp) * 100) + "%";
+  document.getElementById("hpLabel").textContent = `HP ${Math.ceil(p.hp)}/${p.maxHp}`;
+  document.getElementById("scoreLine").textContent = `ไอเทมที่เก็บได้: ${p.score}`;
+}
+
+const STEP_MS = 33.33;
+let lastTime = performance.now();
+let accumulator = 0;
+
+function loop(now) {
+  const dt = now - lastTime;
+  lastTime = now;
+  accumulator += dt;
+  accumulator = Math.min(accumulator, STEP_MS * 5);
+
+  while (accumulator >= STEP_MS) {
+    if (!G.gameOver) update();
+    accumulator -= STEP_MS;
+  }
+
+  render();
+  syncHud();
+  requestAnimationFrame(loop);
+}
+
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
